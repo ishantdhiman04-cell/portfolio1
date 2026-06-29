@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio1 - Ultra Premium 3D Studio</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        html { scroll-behavior: smooth; }
+        body { background-color: #030304; overflow-x: hidden; font-family: sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes subtle-pulse {
+            0%, 100% { opacity: 0.25; transform: scale(1); }
+            50% { opacity: 0.55; transform: scale(1.08); }
+        }
+        .neon-pulse-glow { filter: blur(140px); animation: subtle-pulse 10s ease-in-out infinite; }
+        .custom-grid-overlay {
+            background-size: 50px 50px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+        }
+        .ultra-smooth-motion { transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+            border-radius: 50%; background: #7c3aed; cursor: pointer; border: 2px solid #ffffff;
+            box-shadow: 0 0 15px rgba(124, 58, 237, 0.8);
+        }
+        .terminal-scan::after {
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            z-index: 2; background-size: 100% 2px; pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-[#030304] text-zinc-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Static Data
+        const ENTERPRISE_TEMPLATES = [
+            {
+                id: 'aura-ai',
+                title: 'Aura AI Analytics Node',
+                category: 'SaaS & Machine Learning',
+                tagline: 'High-Performance Neural Hub',
+                description: 'A revolutionary SaaS dashboard complete with 3D brain network models, live web socket metric streams, automatic performance compilers, and multi-user sync tunnels.',
+                price: '$35,000',
+                deploymentSpeed: '0.8s on Edge',
+                lighthouseScore: '100',
+                techStack: ['Next.js 15', 'ThreeJS WebGL', 'Tailwind CSS', 'WebRTC Shaders'],
+                accentColor: '#7c3aed',
+                gradientScheme: 'from-violet-600 via-purple-600 to-indigo-500'
+            },
+            {
+                id: 'zenith-saas',
+                title: 'Zenith Observability Core',
+                category: 'Cloud Engineering & DevOps',
+                tagline: 'Futuristic Serverless Console',
+                description: 'Engineered specifically for DevOps tracking. Includes beautiful 3D particle storm systems indicating server loads, flexible billing systems with dynamic custom sliders, and live latency nodes.',
+                price: '$28,500',
+                deploymentSpeed: '1.1s on Edge',
+                lighthouseScore: '99',
+                techStack: ['React 19', 'Framer Dynamic', 'ThreeJS Vector Cloud', 'Vite Bundle'],
+                accentColor: '#10b981',
+                gradientScheme: 'from-emerald-500 via-teal-600 to-indigo-700'
+            },
+            {
+                id: 'nova-folio',
+                title: 'Nova Creative Director Suite',
+                category: 'WebGL Art Portfolio',
+                tagline: 'Interactive Parallax Studio',
+                description: 'A luxury WebGL creative portfolio showcasing absolute responsive 3D interactive assets, liquid scroll shaders, and fluid typography grid layouts.',
+                price: '$32,000',
+                deploymentSpeed: '0.9s on Edge',
+                lighthouseScore: '100',
+                techStack: ['Vanilla WebGL', 'ThreeJS Particle Grid', 'GSAP Orchestrator', 'Tailwind'],
+                accentColor: '#f43f5e',
+                gradientScheme: 'from-rose-500 via-amber-500 to-violet-600'
+            }
+        ];
+
+        // Helper Icon Component to bypass lucide import issues in browser-level CDN
+        function LucideIcon({ name, className }) {
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [name]);
+            return <i data-lucide={name} className={className}></i>;
+        }
+
+        // 3D Rendering Component
+        function ThreeDCanvas({ color, wireframe, speed, geometry, particles }) {
+            const mountRef = useRef(null);
+
+            useEffect(() => {
+                if (!window.THREE || !mountRef.current) return;
+                const container = mountRef.current;
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+
+                const scene = new window.THREE.Scene();
+                const camera = new window.THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+                camera.position.z = 5.5;
+
+                const renderer = new window.THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(width, height);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                container.appendChild(renderer.domElement);
+
+                const ambientLight = new window.THREE.AmbientLight(0xffffff, 0.25);
+                scene.add(ambientLight);
+
+                const pointLight = new window.THREE.PointLight(color, 1.5, 50);
+                pointLight.position.set(5, 5, 5);
+                scene.add(pointLight);
+
+                let coreGeometry;
+                if (geometry === 'torusKnot') {
+                    coreGeometry = new window.THREE.TorusKnotGeometry(1, 0.3, 120, 16);
+                } else if (geometry === 'sphere') {
+                    coreGeometry = new window.THREE.IcosahedronGeometry(1.2, 3);
+                } else {
+                    coreGeometry = new window.THREE.TorusGeometry(1.1, 0.35, 16, 100);
+                }
+
+                const material = new window.THREE.MeshStandardMaterial({
+                    color: new window.THREE.Color(color),
+                    wireframe: wireframe,
+                    roughness: 0.1,
+                    metalness: 0.8,
+                });
+
+                const coreMesh = new window.THREE.Mesh(coreGeometry, material);
+                scene.add(coreMesh);
+
+                const particleGeo = new window.THREE.BufferGeometry();
+                const posArray = new Float32Array(particles * 3);
+                for (let i = 0; i < particles * 3; i++) {
+                    posArray[i] = (Math.random() - 0.5) * 8;
+                }
+                particleGeo.setAttribute('position', new window.THREE.BufferAttribute(posArray, 3));
+                const particleMat = new window.THREE.PointsMaterial({
+                    size: 0.02, color: color, transparent: true, opacity: 0.6
+                });
+                const starParticles = new window.THREE.Points(particleGeo, particleMat);
+                scene.add(starParticles);
+
+                const handleResize = () => {
+                    if (!container) return;
+                    camera.aspect = container.clientWidth / container.clientHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(container.clientWidth, container.clientHeight);
+                };
+                window.addEventListener('resize', handleResize);
+
+                const clock = new window.THREE.Clock();
+                let animationId;
+                const animate = () => {
+                    animationId = requestAnimationFrame(animate);
+                    const elapsed = clock.getElapsedTime();
+                    coreMesh.rotation.y = elapsed * (speed * 0.3);
+                    coreMesh.rotation.x = elapsed * (speed * 0.15);
+                    starParticles.rotation.y = -elapsed * 0.05;
+                    renderer.render(scene, camera);
+                };
+                animate();
+
+                return () => {
+                    cancelAnimationFrame(animationId);
+                    window.removeEventListener('resize', handleResize);
+                    if (container.contains(renderer.domElement)) {
+                        container.removeChild(renderer.domElement);
+                    }
+                    coreGeometry.dispose();
+                    material.dispose();
+                    particleGeo.dispose();
+                    particleMat.dispose();
+                };
+            }, [color, wireframe, speed, geometry, particles]);
+
+            return <div ref={mountRef} className="w-full h-full" />;
+        }
+
+        // Main App
+        function App() {
+            const [selectedTemplate, setSelectedTemplate] = useState(ENTERPRISE_TEMPLATES[0]);
+            const [activeDevice, setActiveDevice] = useState('desktop');
+            const [isCompiling, setIsCompiling] = useState(false);
+            const [compileLogs, setCompileLogs] = useState([]);
+            const [compileComplete, setCompileComplete] = useState(false);
+
+            const [meshColor, setMeshColor] = useState('#7c3aed');
+            const [isWireframe, setIsWireframe] = useState(false);
+            const [spinSpeed, setSpinSpeed] = useState(1.5);
+            const [activeGeometry, setActiveGeometry] = useState('torusKnot');
+            const [particleIntensity, setParticleIntensity] = useState(250);
+
+            const [userBudget, setUserBudget] = useState(30000);
+            const [proposalStep, setProposalStep] = useState('idle');
+            const [formData, setFormData] = useState({ name: '', email: '' });
+
+            const triggerPipelineCompile = () => {
+                setIsCompiling(true);
+                setCompileComplete(false);
+                setCompileLogs([]);
+
+                const logPipeline = [
+                    '⚡ [portfolio1 Optimization Protocol] Initiated build code pipeline...',
+                    '📥 Ingesting premium 3D assets & shaders from Edge Serverless...',
+                    '📦 Assembling dependencies (React 18, Tailwind CSS, ThreeJS Engine)...',
+                    '🔮 Compiling WebGL shaders & mesh material protocols...',
+                    '🚀 Injecting global CDNs (185 worldwide edge locations)...',
+                    '✨ SSL Handshake finalized. Deployment completed to secure node!'
+                ];
+
+                let current = 0;
+                const interval = setInterval(() => {
+                    if (current < logPipeline.length) {
+                        setCompileLogs(prev => [...prev, logPipeline[current]]);
+                        current++;
+                    } else {
+                        clearInterval(interval);
+                        setCompileComplete(true);
+                    }
+                }, 600);
+            };
+
+            const handleFormSubmit = (e) => {
+                e.preventDefault();
+                setProposalStep('submitting');
+                setTimeout(() => { setProposalStep('success'); }, 1000);
+            };
+
+            return (
+                <div className="min-h-screen text-zinc-100 antialiased overflow-x-hidden relative custom-grid-overlay">
+                    <div className="absolute top-[-10%] left-[5%] w-[600px] h-[600px] bg-violet-600/5 rounded-full neon-pulse-glow pointer-events-none" />
+                    
+                    {/* Navbar */}
+                    <nav className="sticky top-0 z-50 border-b border-zinc-900 bg-[#030304]/80 backdrop-blur-xl px-6 py-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 bg-gradient-to-tr from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center border border-white/10 cursor-pointer">
+                                <span className="font-black text-2xl text-white tracking-tighter">P</span>
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-black text-lg tracking-wider bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent uppercase">portfolio1</span>
+                                    <span className="text-[9px] bg-gradient-to-r from-emerald-500 to-teal-500 text-black px-2 py-0.5 rounded-full font-extrabold tracking-widest">3D PRIME</span>
+                                </div>
+                                <p className="text-[10px] text-zinc-500 font-mono">Elite Creative WebGL Studio</p>
+                            </div>
+                        </div>
+
+                        <div className="hidden lg:flex items-center gap-8 text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                            <a href="#studio-3d" className="hover:text-violet-400 transition-colors flex items-center gap-1.5"><LucideIcon name="compass" className="w-3.5 h-3.5" /> 3D Design Lab</a>
+                            <a href="#hub-templates" className="hover:text-violet-400 transition-colors flex items-center gap-1.5"><LucideIcon name="layers" className="w-3.5 h-3.5" /> Luxury Templates</a>
+                            <a href="#simulator" className="hover:text-violet-400 transition-colors flex items-center gap-1.5"><LucideIcon name="monitor" className="w-3.5 h-3.5" /> Device Sandbox</a>
+                            <a href="#budget-matrix" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5"><LucideIcon name="dollar-sign" className="w-3.5 h-3.5 text-emerald-500" /> Get Custom Quote</a>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/60 border border-zinc-800">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                <span className="text-[10px] text-zinc-400 font-mono font-bold uppercase tracking-wider">WebGL: Active</span>
+                            </div>
+                            <a href="#budget-matrix" className="bg-white hover:bg-zinc-200 text-black px-6 py-2.5 text-xs font-extrabold rounded-xl transition-all shadow-[0_5px_20px_rgba(255,255,255,0.1)] hover:scale-[1.03]">
+                                Launch Project
+                            </a>
+                        </div>
+                    </nav>
+
+                    {/* Hero Section */}
+                    <header className="relative max-w-7xl mx-auto px-6 pt-24 pb-16 text-center">
+                        <div className="inline-flex items-center gap-2.5 bg-zinc-900/80 border border-zinc-800/80 px-4 py-2 rounded-full text-xs text-zinc-300 mb-8 shadow-2xl backdrop-blur-md">
+                            <LucideIcon name="sparkles" className="w-4 h-4 text-violet-400" />
+                            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-400">Next-Gen Engine Dynamic</span>
+                        </div>
+                        <h1 className="text-5xl md:text-8xl font-black tracking-tight leading-none mb-8">
+                            Interactive <span className="bg-gradient-to-r from-zinc-100 via-zinc-400 to-zinc-600 bg-clip-text text-transparent">3D WebGL</span> <br />
+                            <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-emerald-400 bg-clip-text text-transparent">$30,000 Class Portals</span>
+                        </h1>
+                        <p className="max-w-3xl mx-auto text-zinc-400 text-base md:text-lg font-light leading-relaxed mb-12">
+                            ये सामान्य लैंडिंग पेज नहीं हैं। ये WebGL कस्टम शेडर्स और इंटरएक्टिव फिजिक्स एनिमेशन से लैस डिजिटल मास्टरपीस हैं।
+                        </p>
+                    </header>
+
+                    {/* 3D Lab Viewport */}
+                    <section id="studio-3d" className="max-w-7xl mx-auto px-6 py-12 scroll-mt-24">
+                        <div className="bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 border border-zinc-800 p-8 rounded-3xl relative overflow-hidden shadow-2xl">
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                                <div className="lg:col-span-7 bg-black rounded-2xl border border-zinc-800/80 p-2 relative h-[500px] shadow-inner">
+                                    <ThreeDCanvas color={meshColor} wireframe={isWireframe} speed={spinSpeed} geometry={activeGeometry} particles={particleIntensity} />
+                                </div>
+                                <div className="lg:col-span-5 space-y-6 text-left">
+                                    <h2 className="text-2xl md:text-3xl font-black text-white">3D WebGL Configurator</h2>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-mono uppercase text-zinc-500 font-bold">Geometric Shape</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {['torusKnot', 'sphere', 'waveRing'].map((id) => (
+                                                <button key={id} onClick={() => setActiveGeometry(id)} className={`py-2 px-1 text-[10px] font-extrabold border rounded-xl ${activeGeometry === id ? 'bg-white text-black' : 'bg-zinc-950 border-zinc-800 text-zinc-400'}`}>{id}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="space-y-1.5">
+                                            <div className="flex justify-between text-[10px] font-mono text-zinc-400"><span>Spin Speed</span><span>{spinSpeed}x</span></div>
+                                            <input type="range" min="0" max="5" step="0.5" value={spinSpeed} onChange={(e) => setSpinSpeed(Number(e.target.value))} className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer" />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 bg-zinc-950 border border-zinc-800 rounded-2xl">
+                                        <div><h4 className="text-xs font-extrabold text-white">Mathematical Wireframe</h4></div>
+                                        <button onClick={() => setIsWireframe(!isWireframe)} className={`w-12 h-6 rounded-full p-1 ${isWireframe ? 'bg-violet-600' : 'bg-zinc-800'}`}>
+                                            <div className={`w-4 h-4 rounded-full bg-white transition-transform ${isWireframe ? 'translate-x-6' : 'translate-x-0'}`} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Directory Node and Simulator */}
+                    <section id="hub-templates" className="max-w-7xl mx-auto px-6 py-12 scroll-mt-24">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                            {/* Templates */}
+                            <div className="lg:col-span-4 space-y-4 text-left">
+                                {ENTERPRISE_TEMPLATES.map((template) => (
+                                    <div key={template.id} onClick={() => { setSelectedTemplate(template); setMeshColor(template.accentColor); }} className={`relative p-6 rounded-2xl border cursor-pointer ${selectedTemplate.id === template.id ? 'bg-zinc-900/90 border-violet-500/50' : 'bg-zinc-950/60 border-zinc-900'}`}>
+                                        <h3 className="text-lg font-bold text-white">{template.title}</h3>
+                                        <p className="text-xs text-zinc-400 mt-2">{template.price}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            {/* Device Simulator */}
+                            <div id="simulator" className="lg:col-span-8 space-y-6 text-left">
+                                <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                                    <span className="text-xs font-mono">Active Node: <strong className="text-white">{selectedTemplate.title}</strong></span>
+                                    <button onClick={triggerPipelineCompile} className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold">Simulate Edge Deploy</button>
+                                </div>
+                                <div className="relative w-full flex justify-center bg-zinc-950 rounded-2xl border border-zinc-900 p-6 min-h-[300px]">
+                                    <div className="w-full rounded-xl bg-[#070709] p-6">
+                                        <h3 className="text-white text-lg font-bold">{selectedTemplate.title}</h3>
+                                        <p className="text-xs text-zinc-400 mt-4">{selectedTemplate.description}</p>
+                                    </div>
+                                    {isCompiling && (
+                                        <div className="absolute inset-0 bg-black/95 flex flex-col justify-center items-center p-6 rounded-2xl">
+                                            <div className="w-full max-w-md bg-[#070709] border border-zinc-800 p-4 rounded-xl font-mono text-[11px] terminal-scan">
+                                                {compileLogs.map((log, index) => <p key={index} className="text-zinc-400">{log}</p>)}
+                                                {compileComplete && <button onClick={() => setIsCompiling(false)} className="mt-4 w-full bg-emerald-500 text-black py-2 rounded text-xs font-bold">Close Hub Console</button>}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Proposal Form Section */}
+                    <section id="budget-matrix" className="max-w-3xl mx-auto px-6 py-16 scroll-mt-24">
+                        <div className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-3xl text-center">
+                            <h2 className="text-2xl font-black text-white">Get Custom Quote</h2>
+                            <form onSubmit={handleFormSubmit} className="space-y-4 mt-6">
+                                <input type="range" min="10000" max="100000" step="5000" value={userBudget} onChange={(e) => setUserBudget(Number(e.target.value))} className="w-full accent-emerald-500" />
+                                <p className="text-sm font-mono text-emerald-400">${userBudget.toLocaleString()} USD</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <input type="text" placeholder="आपका नाम" required className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white" />
+                                    <input type="email" placeholder="ईमेल पता" required className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white" />
+                                </div>
+                                <button type="submit" className="w-full bg-white text-black font-bold text-xs py-3 rounded-xl">Launch Architecture Project</button>
+                                {proposalStep === 'success' && <p className="text-xs text-emerald-400 mt-2">✓ प्रस्ताव पंजीकृत कर लिया गया है!</p>}
+                            </form>
+                        </div>
+                    </section>
+                </div>
+            );
+        }
+
+        const root = tragedies = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
